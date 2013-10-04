@@ -1,0 +1,146 @@
+<html>
+	<head>
+		<meta name="viewport" content="width=device-width, user-scalable=no">
+
+		<style type="text/css">
+		body { 
+			background-color:white;
+			-webkit-user-select: none;
+			margin: 0;
+			padding: 0;
+		}
+		div {
+			position: relative;
+			width: 160px;
+			height: 160px;
+		}
+
+		#red {
+			margin: 0 auto 0 auto;
+			background: url('http://itp.nyu.edu/~jhl589/bs/red.jpg') no-repeat;
+			top: 10px;
+		}
+
+		#red:active {
+			background: url('http://itp.nyu.edu/~jhl589/bs/red-pressed.jpg') no-repeat;
+		}
+
+		#green {
+			margin: 0 auto 0 auto;
+			background: url('http://itp.nyu.edu/~jhl589/bs/green.jpg') no-repeat;
+			top: 10px;
+		}
+
+		#green:active {
+			background: url('http://itp.nyu.edu/~jhl589/bs/green-pressed.jpg') no-repeat;
+		}
+
+		</style>
+
+		<script type="text/javascript" charset="utf-8" src="http://o.aolcdn.com/dojo/1.1.1/dojo/dojo.xd.js"></script>
+		<script type="text/javascript" src="/socket.io/socket.io.js"></script>
+		<script type="text/javascript">
+		
+			var socket = io.connect('http://ec2-54-200-56-19.us-west-2.compute.amazonaws.com:8080/');
+			
+			var id;
+			var clients = new Array();
+
+			socket.on('connect', function() {
+				console.log("Connected", socket.socket.sessionid);
+				id = socket.socket.sessionid;
+			});
+
+			var sendbtn = function(button) {
+				socket.emit('button', { id: id, button: button });
+			};
+
+	
+			dojo.addOnLoad(function(){
+
+				document.getElementById('debug').innerHTML = 'hello';
+
+				var redBtn = dojo.byId("red"); 
+				var greenBtn = dojo.byId("green"); 
+
+				var dragging = false;
+				var sizing = false;
+				var rotating = 0;
+
+
+				function touch(evt){
+					
+					dojo.forEach(evt.changedTouches, function(e){
+
+						e.preventDefault(); 
+
+						var target = e.target;
+
+						if(target == greenBtn || target == redBtn){
+							if(!dragging) {
+								// Save the offset of the touch within the current note 
+		                    	dragging = [e.pageX - dojo.style(node, "left"), e.pageY - dojo.style(node, "top")]; 
+							}
+						}
+					});	
+				}
+
+
+				function touchend(evt){
+
+					dojo.forEach(evt.changedTouches, function(e){
+						
+						var target = e.target;
+
+						if(target == greenBtn){
+							sendbtn('green');
+							document.getElementById('debug').innerHTML = 'green pressed';		
+
+						} else if(target == redBtn) {
+							sendbtn('red');
+							document.getElementById('debug').innerHTML = 'red pressed';		
+						}
+
+						// Check to see if we've gone from a gesture back down to a touch
+						if(e.target == redBtn || e.target == greenBtn){
+							if (evt.targetTouches.length == 1) { 
+                    			// If there was rotation, this number needs to be reset 
+                				dragging = [evt.targetTouches[0].pageX - dojo.style(node, "left"), evt.targetTouches[0].pageY - dojo.style(node, "top")]; 
+            				} else if (!evt.targetTouches.length) { 
+                				dragging = false; 
+            				}
+						}
+					});
+				}
+
+
+				function touchmove(evt){
+
+					evt.preventDefault();
+					dojo.forEach(evt.changedTouches, function(e){
+						if(e.target == redBtn || e.target == greenBtn){
+							// Move the node if we're in a state of dragging, but not resizing	
+							
+							document.getElementById('debug').innerHTML = e.pageX + " , " + e.pageY;
+
+							dojo.style(e.target, {
+								left: e.pageX - dragging[0] + "px",
+								top: e.pageY - dragging[1] + "px"
+							});
+						}
+					});
+
+				}
+
+				dojo.connect(dojo.doc, "ontouchstart", touch);
+				dojo.query("div").connect("ontouchmove", touchmove);
+				dojo.connect(dojo.doc, "ontouchend", touchend);
+			});
+		</script>	
+	</head>
+	<body>
+		<span id="debug"></span>
+		<div id="red"><a id="red"></a></div>
+		<div id="green"><a id="green"></a></div>
+	</body>
+</html>
